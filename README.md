@@ -21,6 +21,26 @@ mkdir nombre_carpeta    # Crear una nueva carpeta
 rm -rf nombre_carpeta   # Borrar una carpeta y todo su contenido (usar con precaución)
 ```
 
+### Editar Archivos desde la Consola (Editor Nano):
+Cuando necesitas modificar configuraciones de dominios, puertos o proyectos (por ejemplo, los archivos `.md` o `.yml` guardados en `/srv/shared`), usas el editor de texto integrado llamado **nano**.
+
+```bash
+# 1. Ve a la carpeta donde están las configuraciones globales
+cd /srv/shared
+
+# 2. Lista los archivos para ver qué puedes editar
+ls -la
+
+# 3. Abre el archivo deseado con permisos de administrador
+sudo nano proyectos.md
+```
+
+**¿Cómo guardar y salir de Nano?**
+1. Escribe o modifica el texto moviéndote con las flechas del teclado.
+2. Presiona **`Ctrl + O`** para decirle al programa que quieres guardar (Write Out).
+3. Presiona **`Enter`** para confirmar el nombre del archivo.
+4. Presiona **`Ctrl + X`** para cerrar el editor y volver a la terminal normal.
+
 ---
 
 ## 🔒 2. Manejo de Permisos (Sudo, Chown y Chmod)

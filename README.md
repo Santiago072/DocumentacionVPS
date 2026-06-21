@@ -1,113 +1,123 @@
-# Documentación y Comandos del VPS (Sistema Sodicol)
+# Guía de Administración y Comandos para Servidores VPS (Linux / Ubuntu)
 
-Este repositorio contiene la guía definitiva de administración y comandos útiles para el Mantenimiento del Servidor Virtual Privado (VPS) donde se encuentra alojado el **Sistema Sodicol**.
-
-Dado que el servidor utiliza una arquitectura moderna basada en contenedores (**Docker**), los comandos aquí listados están orientados al flujo de trabajo exacto de nuestro despliegue en producción.
+Este repositorio contiene una guía general de comandos y buenas prácticas para la administración de un Servidor Virtual Privado (VPS). La información aquí descrita está diseñada para gestionar proyectos web modernos basados en contenedores (Docker), repositorios remotos (Git) y arquitecturas típicas de Linux.
 
 ---
 
-## 📁 1. Ubicación del Proyecto
+## 📁 1. Navegación Básica y Carpetas Comunes
 
-Toda la administración del código y los contenedores debe realizarse situándose primero en la carpeta raíz del proyecto en el servidor:
+En un servidor Linux, las ubicaciones donde guardas los archivos son fundamentales.
 
+* **`/home/usuario/` o `~/`**: Es tu carpeta personal. Aquí sueles guardar los proyectos que estás desarrollando o clonando desde GitHub (ej. `~/projects/MiProyecto`).
+* **`/srv/` o `/var/www/`**: Carpetas reservadas tradicionalmente para datos de servicios web. Si usas Docker con volúmenes persistentes, es muy común crear carpetas como `/srv/shared/` para guardar archivos que no se deben borrar al reiniciar contenedores (imágenes, PDFs subidos por usuarios, backups, etc.).
+* **`/tmp/`**: Carpeta para archivos temporales que se borran automáticamente al reiniciar el VPS.
+
+### Comandos de Navegación y Gestión de Carpetas:
 ```bash
-# Ingresar a la carpeta principal del proyecto
-cd ~/projects/SistemaSodicol
+cd /ruta/hacia/carpeta  # Entrar a una carpeta
+cd ..                   # Subir un nivel (salir de la carpeta actual)
+ls -la                  # Listar todos los archivos y carpetas mostrando detalles y permisos
+mkdir nombre_carpeta    # Crear una nueva carpeta
+rm -rf nombre_carpeta   # Borrar una carpeta y todo su contenido (usar con precaución)
 ```
 
 ---
 
-## 🔒 2. Solución a Problemas de Permisos (Carpetas Bloqueadas)
+## 🔒 2. Manejo de Permisos (Sudo, Chown y Chmod)
 
-**¿Por qué sucede?**  
-Al ejecutarse PHP y Apache dentro de un contenedor Docker, el sistema asume temporalmente permisos de "Administrador" (root/www-data) para escribir archivos internos (como los logs de errores). Esto bloquea a Git al momento de querer actualizar el código, arrojando errores como `Permission denied`.
+**¿Por qué sucede el error "Permission Denied"?**  
+Cuando usas contenedores Docker, procesos como PHP o Nginx pueden generar archivos internos (logs, imágenes) actuando como el superusuario del sistema (`root`). Esto bloquea a otros programas (como Git o tu propio usuario) impidiéndoles modificar esos archivos.
 
-**Solución:**  
-Ejecutar el siguiente comando estando dentro de `~/projects/SistemaSodicol` para devolverle la propiedad de los archivos al usuario del servidor:
-
+**Solución 1: Devolver la propiedad de los archivos a tu usuario**
 ```bash
+# Entra a la carpeta de tu proyecto
+cd ~/projects/MiProyecto
+
+# Hazte dueño absoluto de la carpeta actual (.) y todo lo que contiene (-R)
 sudo chown -R $USER:$USER .
 ```
-*(Es probable que te solicite la contraseña de tu usuario 'santiago')*
+
+**Solución 2: Dar permisos de escritura a una carpeta compartida (ej. `/srv/shared`)**  
+A veces, un contenedor Docker no puede escribir en una carpeta compartida en el host. Para permitir lectura y escritura pública en esa carpeta específica:
+```bash
+sudo chmod -R 777 /srv/shared
+```
 
 ---
 
-## ⬇️ 3. Actualizar el Código Fuente desde GitHub
+## ⬇️ 3. Control de Versiones (Git) en Producción
 
-Una vez que se han programado nuevos cambios y se han subido a la rama `main` en GitHub, los pasos exactos para descargar esa actualización limpia al VPS son:
+La forma correcta de actualizar el código de cualquier proyecto web que ya esté funcionando en el VPS es forzar una descarga exacta desde la rama principal (`main`) de GitHub, eliminando cualquier archivo temporal o choque de configuración.
 
 ```bash
-# 1. Asegurarse de tener los permisos correctos (ver sección 2)
+# 1. Asegúrate de tener permisos en la carpeta del proyecto
 sudo chown -R $USER:$USER .
 
-# 2. Descargar la información más reciente de GitHub sin aplicarla todavía
+# 2. Obtener los últimos metadatos desde GitHub (sin fusionarlos aún)
 git fetch origin
 
-# 3. Forzar al VPS a que su código sea una copia EXACTA de lo que hay en GitHub
+# 3. Forzar al VPS a sobreescribir su código para que sea EXACTO al de GitHub
 git reset --hard origin/main
 ```
 
 ---
 
-## 🐳 4. Gestión de Contenedores (Docker Compose)
+## 🐳 4. Gestión de Contenedores (Docker & Docker Compose)
 
-El servidor levanta la base de datos (MySQL) y la aplicación web (Apache/PHP) usando Docker.
+Docker es el estándar de la industria para ejecutar bases de datos y servidores web encapsulados. El archivo que los orquesta suele llamarse `docker-compose.yml` o `compose.yml`.
 
-**Reconstruir y Levantar el Servidor (Aplicar Cambios)**  
-Si se modificó alguna configuración estructural (como el `Dockerfile`, el `php.ini` o se requiere reiniciar totalmente el servicio PHP para borrar la caché):
-
+**Reconstruir y Levantar los Servicios (Aplicar Actualizaciones)**  
+Útil cuando cambias el `Dockerfile`, archivos de configuración o simplemente cuando bajaste nuevo código de GitHub.
 ```bash
-sudo docker compose -f docker/docker-compose.yml up -d --build
+# Construye nuevas imágenes (si es necesario) y levanta los contenedores en segundo plano (-d)
+sudo docker compose -f docker-compose.yml up -d --build
 ```
 
-**Apagar el Servidor por Completo**  
+**Ver el Estado de los Contenedores**  
 ```bash
-sudo docker compose -f docker/docker-compose.yml down
+sudo docker ps
 ```
 
-**Ver Logs en Tiempo Real (Para diagnosticar caídas críticas)**  
+**Apagar Completamente el Proyecto**  
 ```bash
-sudo docker compose -f docker/docker-compose.yml logs -f
+sudo docker compose -f docker-compose.yml down
 ```
 
----
-
-## 📦 5. Descargar/Actualizar Bibliotecas de PHP (Composer)
-
-Dado que la generación de PDFs usa la librería **DomPDF**, la cual se gestiona a través de Composer, si alguna actualización requiere reinstalar o descargar nuevas librerías, se debe ejecutar este comando. 
-
-*(Ojo: Esto no se ejecuta directamente en el VPS, sino dándole la orden "desde afuera" al contenedor llamado `sodicol_app`)*:
-
+**Ver Logs (Registro de Actividades y Errores) en Tiempo Real**  
+Si tu servidor web falla, revisa este comando.
 ```bash
-docker exec -it sodicol_app composer install
+sudo docker compose -f docker-compose.yml logs -f
 ```
 
 ---
 
-## 🗄️ 6. Acceso Directo a la Base de Datos
+## 🛠️ 5. Ejecutar Comandos "Dentro" de un Contenedor
 
-Si necesitas ejecutar un comando SQL manualmente (como crear índices o revisar una tabla), puedes inyectar comandos directamente al contenedor de la base de datos (`sodicol_mysql`):
+No necesitas instalar `PHP`, `Composer`, `Node.js` o `MySQL` en el propio VPS. Todo está dentro de los contenedores. Utilizas `docker exec` para introducir comandos como si estuvieras dentro de ellos.
 
+**Ejemplo 1: Instalar dependencias de PHP (Composer)**  
 ```bash
-# Ingresar a la consola interactiva de MySQL
-docker exec -it sodicol_mysql mysql -u sodicol -p sistema_sodicol
+# Si tu contenedor de PHP se llama 'mi_app_php'
+docker exec -it mi_app_php composer install
+```
 
-# (El sistema te pedirá la contraseña de la base de datos definida en el .env)
+**Ejemplo 2: Entrar a la consola de la Base de Datos MySQL/MariaDB**  
+```bash
+# Si tu contenedor se llama 'mi_db_mysql' y el usuario es 'root'
+docker exec -it mi_db_mysql mysql -u root -p
 ```
 
 ---
 
-## ⚙️ Resumen del Flujo Completo de Actualización Normal
+## ⚙️ La "Receta Mágica" para Actualizar un Proyecto General
 
-Cuando te digan: *"Los cambios ya están listos en GitHub, actualiza el VPS"*, esta es la "receta mágica" que debes copiar y pegar (línea por línea):
+Cuando tu equipo de desarrollo te indique: *"Los cambios ya están en GitHub"*, ejecuta siempre este bloque de forma secuencial en la carpeta del proyecto:
 
 ```bash
-cd ~/projects/SistemaSodicol
+cd ~/ruta/de/tu/proyecto
 sudo chown -R $USER:$USER .
 git fetch origin
 git reset --hard origin/main
-sudo docker compose -f docker/docker-compose.yml up -d --build
-docker exec -it sodicol_app composer install
+sudo docker compose -f compose.yml up -d --build
 ```
-
-Con esto, garantizas que los permisos, el código, el servidor y las bibliotecas queden funcionando de manera impecable y sincronizada.
+*(Y si el proyecto usa dependencias como Composer o NPM, añadirías al final `docker exec -it <nombre_contenedor> composer install`)*

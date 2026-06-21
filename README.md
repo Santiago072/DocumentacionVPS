@@ -141,3 +141,65 @@ git reset --hard origin/main
 sudo docker compose -f compose.yml up -d --build
 ```
 *(Y si el proyecto usa dependencias como Composer o NPM, añadirías al final `docker exec -it <nombre_contenedor> composer install`)*
+
+---
+
+## 🌐 6. Enrutamiento y Dominios (Nginx Nativo)
+
+Cuando levantas un proyecto con Docker y expones un puerto (ej. `8892:80`), el proyecto funciona internamente, pero necesitas un **Proxy Inverso** para que responda a un dominio real (`midominio.com`). A veces los servidores usan Nginx Proxy Manager, pero la forma más pura y profesional es usar el **Nginx nativo** instalado en Ubuntu.
+
+### Cómo apuntar un Dominio a tu Contenedor Docker
+Toda la configuración de Nginx vive en la carpeta `/etc/nginx/sites-available/`.
+
+**Paso 1: Crear el archivo de configuración**
+```bash
+# Se recomienda usar .conf para mantener el orden
+sudo nano /etc/nginx/sites-available/miproyecto.conf
+```
+
+**Paso 2: Bloque de Proxy Inverso Básico**
+En el editor, pega esto (cambiando el dominio y el puerto expuesto en docker-compose):
+```nginx
+server {
+    listen 80;
+    server_name midominio.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:8892; # Puerto expuesto hacia el host
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+**Paso 3: Activar y Aplicar los Cambios**
+```bash
+# 1. Crear el enlace simbólico para habilitarlo
+sudo ln -s /etc/nginx/sites-available/miproyecto.conf /etc/nginx/sites-enabled/
+
+# 2. Verificar que no haya errores de sintaxis
+sudo nginx -t
+
+# 3. Aplicar los cambios sin apagar el servidor
+sudo systemctl reload nginx
+```
+
+---
+
+## 🔒 7. Certificados SSL (HTTPS) y el "Efecto Fallback"
+
+**Problema común:** Ingresas a tu nuevo dominio y te muestra la página web de *otro proyecto/compañero* que está alojado en el mismo VPS. 
+
+**¿Por qué sucede? (El Fallback):**
+Esto ocurre cuando visitas tu dominio forzando la conexión segura (`https://` - puerto 443), pero tu archivo `.conf` actual solo tiene configurado el puerto 80 (`listen 80;`). Al Nginx no encontrar configuración segura para tu dominio, entra en pánico y muestra el primer sitio web seguro que encuentre alojado en el servidor por defecto.
+
+**La Solución: Instalar el Certificado SSL con Certbot**
+Para adueñarte de tu conexión segura y que Certbot añada las líneas necesarias para el puerto 443, debes ejecutar:
+
+```bash
+sudo certbot --nginx -d midominio.com
+```
+
+> **Nota:** Si pegas una configuración o comando masivo, asegúrate de no saltarte las preguntas interactivas de Certbot en la terminal. Si ya habías emitido un certificado antes, te preguntará si deseas "Attempt to reinstall this existing certificate" (opción 1) o "Renew & replace" (opción 2). Elige la **opción 1**, y recarga tu web.

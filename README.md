@@ -203,3 +203,40 @@ sudo certbot --nginx -d midominio.com
 ```
 
 > **Nota:** Si pegas una configuración o comando masivo, asegúrate de no saltarte las preguntas interactivas de Certbot en la terminal. Si ya habías emitido un certificado antes, te preguntará si deseas "Attempt to reinstall this existing certificate" (opción 1) o "Renew & replace" (opción 2). Elige la **opción 1**, y recarga tu web.
+
+---
+
+## 🪲 8. Errores Comunes de Windows a Linux (El "Case Sensitivity")
+
+Uno de los errores más frustrantes al subir un proyecto de XAMPP (Windows) a un VPS (Linux) es el error `Class does not exist` o `File not found`.
+
+**¿Por qué ocurre?**
+* **Windows** ignora las mayúsculas: Para Windows, la carpeta `admin` es exactamente igual que `Admin`.
+* **Linux (y Docker)** es estricto: Para Linux, `admin` y `Admin` son dos lugares completamente distintos.
+
+Si tu código PHP (`Composer PSR-4`) dice que el namespace es `App\Controllers\Admin` (con **A mayúscula**), pero tu carpeta se llama `admin` (con **a minúscula**), funcionará perfecto en local, pero **fallará en el VPS**.
+
+**La Solución:**
+La forma correcta de arreglarlo es renombrar la carpeta para que coincida con el código. Dado que Git en Windows a veces ignora los cambios de mayúsculas, debes hacerlo en dos pasos (o usando una carpeta temporal):
+```bash
+git mv app/controllers/admin app/controllers/tmp_admin
+git mv app/controllers/tmp_admin app/controllers/Admin
+git commit -m "fix: mayúsculas en carpeta Admin"
+```
+
+---
+
+## 🔄 9. Actualización de Variables (.env) y `docker compose`
+
+Cuando usas versiones modernas de Ubuntu y Docker, el comando clásico `docker-compose` (con guion) ha sido reemplazado por **`docker compose`** (con espacio), ya que ahora viene como un plugin oficial de Docker.
+
+**¿Cómo actualizar contraseñas o el archivo `.env` en producción?**
+Recuerda que el archivo `.env` **no se sube a GitHub**, por lo que si cambias una clave de correo localmente, el servidor no se enterará mediante un `git pull`. 
+
+Para actualizar una contraseña en el VPS debes:
+1. Editar el archivo directamente en el VPS (usando `nano .env` o comandos como `sed`).
+2. **Reiniciar el contenedor** para que el sistema operativo interno lea las nuevas variables:
+```bash
+sudo docker compose up -d
+```
+No necesitas `--build` si solo cambiaste el `.env`. Con solo levantarlo de nuevo (`up -d`), Docker inyecta las nuevas claves.

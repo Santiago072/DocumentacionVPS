@@ -142,6 +142,20 @@ sudo docker compose -f compose.yml up -d --build
 ```
 *(Y si el proyecto usa dependencias como Composer o NPM, añadirías al final `docker exec -it <nombre_contenedor> composer install`)*
 
+### Automatización: El Script `deploy.sh`
+Para evitar escribir esta serie de comandos repetidamente cada vez que hay una actualización, la mejor práctica es agruparlos en un script de despliegue automático en la raíz del proyecto. 
+
+**Paso 1: Dar permisos de ejecución (solo una vez)**
+```bash
+chmod +x deploy.sh
+```
+
+**Paso 2: Ejecutar actualizaciones rápidamente**
+```bash
+./deploy.sh
+```
+El script internamente se encarga de realizar el `git pull` y el comando `docker compose up -d --build` para reconstruir los contenedores con la versión más reciente de la imagen, inyectando el código fresco instantáneamente.
+
 ---
 
 ## 🌐 6. Enrutamiento y Dominios (Nginx Nativo)

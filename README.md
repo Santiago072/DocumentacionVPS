@@ -254,3 +254,36 @@ Para actualizar una contraseña en el VPS debes:
 sudo docker compose up -d
 ```
 No necesitas `--build` si solo cambiaste el `.env`. Con solo levantarlo de nuevo (`up -d`), Docker inyecta las nuevas claves.
+
+---
+
+## 🏗️ 10. Estructura Típica de un Proyecto (Patrón MVC)
+
+Para estandarizar el desarrollo y facilitar la administración en el VPS, todos nuestros proyectos (como PQRS, Sodicol, etc.) siguen una arquitectura MVC (Modelo-Vista-Controlador) estricta bajo la siguiente estructura de carpetas:
+
+```text
+MiProyecto/
+├── app/                     # Carpeta principal del backend protegido (MVC)
+│   ├── controllers/         # Lógica de negocio (recibe peticiones y llama al modelo)
+│   ├── models/              # Consultas directas a la base de datos MySQL (PDO/MySQLi)
+│   ├── services/            # Servicios reutilizables (Manejo de archivos, Emails)
+│   └── views/               # Archivos HTML/PHP con el diseño visual de las páginas
+├── config/                  # Configuraciones globales
+│   ├── conexion.php         # Archivo que establece conexión con la BD
+│   └── .env                 # Variables seguras (contraseñas, no se sube a GitHub)
+├── public/                  # Archivos expuestos públicamente a internet
+│   ├── css/                 # Estilos en cascada
+│   ├── js/                  # Scripts de interacción (AJAX)
+│   └── img/                 # Imágenes estáticas (logos, íconos)
+├── uploads/                 # Archivos subidos por los usuarios (fotos, PDFs de PQRS)
+├── logs/                    # Registro de errores de PHP
+├── deploy.sh                # Script oficial de despliegue automatizado para el VPS
+├── docker-compose.yml       # Orquestador de contenedores (App, Base de Datos)
+├── BD.txt                   # Volcado SQL inicial de la base de datos
+└── index.php                # Front Controller: Punto de entrada único del sistema
+```
+
+### ¿Por qué esta estructura es importante en el VPS?
+1. **Seguridad:** Todas las peticiones web apuntan a `index.php`. El código crítico está encerrado en `app/` o `config/` y no es accesible directamente escribiendo la ruta en el navegador.
+2. **Persistencia (Volúmenes de Docker):** Las carpetas `uploads/` y `logs/` se mapean en el `docker-compose.yml` como volúmenes persistentes. Esto significa que cuando el servidor se actualiza (`./deploy.sh`), **no se pierden las imágenes subidas por los clientes ni los registros de errores**.
+3. **Escalabilidad:** Separar `public/` (lo que ve el navegador) de `app/` (lo que procesa el servidor) permite que Nginx o Caddy sirvan archivos estáticos (CSS/JS) a la velocidad de la luz sin invocar a PHP.

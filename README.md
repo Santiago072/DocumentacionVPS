@@ -1,27 +1,33 @@
-# Documentación de Despliegue VPS 🚀
+﻿# Documentación y Comandos para Servidores VPS (Linux / Ubuntu) 🚀
 
-Este repositorio contiene las guías técnicas estandarizadas y generalizadas para desplegar aplicaciones web (especialmente arquitecturas MVC, PHP y MySQL/MariaDB) en Servidores Privados Virtuales (VPS) de producción usando contenedores Docker.
+Este repositorio centraliza las guías, comandos y buenas prácticas para la administración de un Servidor Virtual Privado (VPS). La información está diseñada de forma general para gestionar proyectos web modernos basados en arquitectura **MVC**, **Docker**, **Nginx** y repositorios **Git**.
 
-## Índice de Documentación
+## 📑 Índice de Documentación Estructurada
 
-La información ha sido modularizada para facilitar su lectura y consulta técnica:
+La documentación ha sido refactorizada e integrada en archivos modulares:
 
-1. **[Fase 1: Preparación del VPS y Entorno](docs/01_preparacion_vps.md)**
-   - Clonación y control de permisos (`chown`).
-   - Configuración de variables de entorno `.env`.
-   - Lógica y ejecución de scripts de despliegue (`deploy.sh`).
+1. **[Fase 0: Navegación Básica y Permisos](docs/00_linux_basico.md)**
+   * Navegación por carpetas de Linux y uso de Nano.
+   * Manejo de usuarios, permisos (\chown\, \chmod\) y errores *Permission Denied*.
 
-2. **[Fase 2: Docker, Base de Datos y Transferencias](docs/02_docker_y_bd.md)**
-   - Orquestación con `docker-compose`.
-   - Transferencia segura de archivos vía SCP.
-   - Importación de datos (semillas de base de datos) previniendo problemas de codificación (UTF-8).
-   - Manejo de Volúmenes Docker para archivos subidos.
-   - Solución a errores de *Modo Estricto* en bases de datos.
+2. **[Fase 1: Preparación del VPS y Git](docs/01_preparacion_vps.md)**
+   * Clonación de repositorios y descargas forzadas (git reset --hard).
+   * Creación, actualización e inyección segura de variables \.env\.
+   * Estructura y propósito de \deploy.sh\.
 
-3. **[Fase 3: Proxy Inverso y SSL (Nginx)](docs/03_nginx_y_ssl.md)**
-   - Instalación de Nginx y Certbot.
-   - Creación de bloques de servidor para redirigir tráfico al puerto de Docker.
-   - Implementación de Certificados SSL seguros mediante Let's Encrypt.
+3. **[Fase 2: Docker, Base de Datos y Transferencias](docs/02_docker_y_bd.md)**
+   * Orquestación de contenedores y ejecución de comandos internos (\docker exec\).
+   * Transferencias directas (\scp\) para evitar subir datos sensibles a GitHub.
+   * Importación de bases de datos, prevención de caracteres corruptos y solución al *Modo Estricto* de SQL.
+
+4. **[Fase 3: Proxy Inverso y SSL (Nginx)](docs/03_nginx_y_ssl.md)**
+   * Configuración pura de bloques Nginx nativo.
+   * Enrutamiento de dominios al puerto interno de Docker.
+   * Certificados SSL automatizados (Let's Encrypt) y prevención del *Efecto Fallback*.
+
+5. **[Fase 4: Buenas Prácticas y Errores Típicos](docs/04_buenas_practicas_mvc.md)**
+   * Solución al *Case Sensitivity* (diferencias de mayúsculas entre Windows y Linux).
+   * Estructura estándar obligatoria para proyectos MVC y cómo se conecta con la persistencia en el VPS.
 
 ---
-*Mantenido por Santiago072.*
+*Mantenido y documentado por Santiago072.*

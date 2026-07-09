@@ -1,56 +1,84 @@
-# Fase 2: Docker, Base de Datos y Transferencia de Archivos
+﻿# Fase 2: Docker, Base de Datos y Transferencias
 
-Esta guía explica cómo levantar los servicios de orquestación, transferir información confidencial (como semillas de base de datos e imágenes de usuarios) e importarlas de forma segura.
+## 1. Gestión de Contenedores (Docker Compose)
+Docker es el estándar para ejecutar bases de datos y servidores web encapsulados.
 
-## 1. Levantar Contenedores (Docker Compose)
-Se asume el uso de un archivo `docker-compose.yml`. Para sistemas que interactúan entre sí (Ej: múltiples aplicaciones en el mismo VPS detrás de un Nginx), se recomienda crear una red compartida primero.
+* **Reconstruir y Levantar los Servicios:** \docker compose -f docker-compose.yml up -d --build\
+* **Ver el Estado de los Contenedores:** \docker ps\
+* **Apagar el Proyecto:** \docker compose down\
+* **Ver Logs en Tiempo Real:** \docker compose logs -f\
 
-```bash
-docker network create mi_red_global 2>/dev/null || true
-docker compose up -d --build
-```
+## 2. Ejecutar Comandos "Dentro" de un Contenedor
+Utilizas docker exec para introducir comandos como si estuvieras dentro de ellos sin instalar nada en el VPS.
+* Instalar dependencias PHP: \docker exec -it mi_app_php composer install\
+* Entrar a MySQL: \docker exec -it mi_db_mysql mysql -u root -p\
 
-## 2. Transferencia Segura de Archivos Locales (SCP)
-Nunca subas archivos como `data_seed.sql` (que contengan hashes de usuarios reales o datos sensibles) a GitHub. Usa `scp` desde tu consola local (Windows/Mac) para transferirlos directamente por SSH.
-
-**Ejemplo de transferencia de archivo SQL:**
-```powershell
+## 3. Transferencia Segura de Archivos Locales (SCP)
+Nunca subas archivos con hashes de usuarios reales a GitHub. Usa \scp\:
+\\\powershell
 scp ruta\local\data_seed.sql usuario@IP_DEL_VPS:~/projects/MiProyecto/
-```
+\\\
 
-**Ejemplo de transferencia de imágenes (comprimir primero):**
-```powershell
-Compress-Archive -Path ruta\local\uploads\* -DestinationPath uploads.zip -Force
-scp uploads.zip usuario@IP_DEL_VPS:~/projects/MiProyecto/
-```
-
-## 3. Importar Base de Datos (Semilla)
-Una vez el archivo SQL esté en el VPS, se debe inyectar al contenedor de base de datos. 
-
-Si el sistema ya generó datos iniciales y el archivo contiene `INSERT INTO`, puedes tener errores de duplicidad. Es recomendable cambiar a `REPLACE INTO` para sobreescribir:
-```bash
+## 4. Importar Base de Datos (Semilla)
+Inyecta el archivo SQL al contenedor. Si ocurren errores de duplicidad, usa \REPLACE INTO\ y fuerza \UTF-8\:
+\\\ash
 sed -i 's/INSERT INTO/REPLACE INTO/g' data_seed.sql
-```
+docker exec -i nombre_contenedor_db mariadb -u usuario_bd -pClave --default-character-set=utf8mb4 nombre_bd < data_seed.sql
+\\\
 
-**Comando de inyección (Forzando UTF-8):**
-Es crítico forzar `--default-character-set=utf8mb4` para que las tildes y caracteres especiales (ñ) no se corrompan (Ej: `tama├▒o`).
-```bash
-docker exec -i nombre_contenedor_db mariadb -u usuario_bd -pClaveSegura --default-character-set=utf8mb4 nombre_bd < data_seed.sql
-```
-
-## 4. Resolución de Errores Comunes de BD
-
-### 4.1. Error 500: Data too long for column (Modo Estricto)
-Las bases de datos modernas en la nube operan en **Modo Estricto**. Si la estructura de la base de datos dice que un texto admite 80 caracteres, e intentas guardar 81, el sistema arrojará un error 500 en lugar de truncarlo en silencio.
-**Solución:** Aumentar el límite de la columna en vivo:
-```bash
+## 5. Resolución de Errores Comunes de BD
+**Error 500: Data too long for column (Modo Estricto)**
+Aumentar el límite de la columna en vivo:
+\\\ash
 docker exec -i nombre_contenedor_db mariadb -u usuario_bd -pClave -e "ALTER TABLE mi_tabla MODIFY columna VARCHAR(255) DEFAULT NULL;"
-```
+\\\
 
-### 4.2. Extraer archivos dentro de un Volumen Docker
-Las imágenes subidas por usuarios se guardan en Volúmenes de Docker, no en el host. Para pasar el `uploads.zip` a la carpeta real del servidor web dentro de Docker:
-
-```bash
+**Extraer archivos en Volúmenes de Docker:**
+\\\ash
 docker cp uploads.zip contenedor_app:/tmp/
-docker exec -i contenedor_app bash -c "apt-get update && apt-get install -y unzip && unzip -o /tmp/uploads.zip -d /var/www/html/uploads/ && chown -R www-data:www-data /var/www/html/uploads/"
-```
+docker exec -i contenedor_app bash -c "unzip -o /tmp/uploads.zip -d /var/www/html/uploads/ && chown -R www-data:www-data /var/www/html/uploads/"
+\\\
+"@ -Encoding UTF8
+
+Set-Content -Path docs/03_nginx_y_ssl.md -Value @"
+# Fase 3: Proxy Inverso (Nginx) y Seguridad SSL (HTTPS)
+
+## 1. Enrutamiento y Dominios (Nginx Nativo)
+Para que un proyecto en Docker (puerto \8892\) responda a un dominio real, debes configurar Nginx como proxy inverso.
+
+**Crear el archivo de configuración:**
+\\\ash
+sudo nano /etc/nginx/sites-available/miproyecto.conf
+\\\
+
+**Bloque de Proxy Inverso Básico:**
+\\\
+ginx
+server {
+    listen 80;
+    server_name midominio.com;
+    location / {
+        proxy_pass http://127.0.0.1:8892;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+\\\
+
+**Activar y Aplicar:**
+\\\ash
+sudo ln -s /etc/nginx/sites-available/miproyecto.conf /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl reload nginx
+\\\
+
+## 2. Certificados SSL (HTTPS) y el "Efecto Fallback"
+**Problema del Fallback:** Ingresas a tu dominio con \https://\ y muestra el sitio de otro proyecto. Ocurre porque Nginx no tiene configuración segura para tu dominio, así que entra en pánico y muestra el primer sitio web seguro que encuentre en el servidor por defecto.
+
+**La Solución:** Usar Certbot para adueñarte de tu conexión segura.
+\\\ash
+sudo certbot --nginx -d midominio.com
+\\\
+Elige la opción para redirigir todo el tráfico a HTTPS. Si ya tenías un certificado, te preguntará si deseas "Attempt to reinstall this existing certificate" (opción 1).

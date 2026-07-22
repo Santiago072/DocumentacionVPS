@@ -1,4 +1,4 @@
-﻿# Fase 2: Docker, Base de Datos y Transferencias
+# Fase 2: Docker, Base de Datos y Transferencias
 
 ## 1. Gestión de Contenedores (Docker Compose)
 Docker es el estándar para ejecutar bases de datos y servidores web encapsulados.
@@ -10,8 +10,18 @@ Docker es el estándar para ejecutar bases de datos y servidores web encapsulado
 
 ## 2. Ejecutar Comandos "Dentro" de un Contenedor
 Utilizas docker exec para introducir comandos como si estuvieras dentro de ellos sin instalar nada en el VPS.
-* Instalar dependencias PHP: \docker exec -it mi_app_php composer install\
-* Entrar a MySQL: \docker exec -it mi_db_mysql mysql -u root -p\
+* Instalar dependencias PHP: \`docker exec -it mi_app_php composer install\`
+* Entrar a MySQL (Modo Interactivo):
+  ```bash
+  docker exec -it <nombre_contenedor_db> mysql -u <usuario_bd> -p<contraseña> <nombre_bd>
+  ```
+  *(Sustituye `<nombre_contenedor_db>`, `<usuario_bd>`, `<contraseña>` y `<nombre_bd>` por los valores de tu `.env`)*
+  
+  **Comandos útiles dentro de MySQL (`MariaDB [...]>`):**
+  - Ver tablas: `SHOW TABLES;`
+  - Ver estructura de tabla: `DESCRIBE nombre_tabla;`
+  - Ver datos: `SELECT * FROM nombre_tabla LIMIT 5;`
+  - Salir: `exit;`
 
 ## 3. Transferencia Segura de Archivos Locales (SCP)
 Nunca subas archivos con hashes de usuarios reales a GitHub. Usa \scp\:
